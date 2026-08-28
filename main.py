@@ -56,6 +56,9 @@ def main():
     caminho_trilha = os.path.join(pasta_sons, "trilha sonora.mp3")
     tem_trilha = os.path.exists(caminho_trilha)
 
+    caminho_recorde = os.path.join(pasta_sons, "record.mp3")
+    tem_musica_recorde = os.path.exists(caminho_recorde)
+
     caminho_perdeu_som = os.path.join(pasta_sons, "perdeu.mp3")
     if os.path.exists(caminho_perdeu_som):
         som_perdeu = pygame.mixer.Sound(caminho_perdeu_som)
@@ -142,7 +145,11 @@ def main():
 
             # --- PARTIDA ---
             elif estado == "partida":
-                if evento.type == pygame.KEYDOWN:
+                resultado = partida.tratar_eventos_partida(evento)
+                if resultado == "pausar":
+                    partida.pausado = True
+                    estado = "pausa"
+                elif evento.type == pygame.KEYDOWN:
                     if evento.key == pygame.K_SPACE:
                         partida.jogador.pular()
                     elif evento.key == pygame.K_ESCAPE:
@@ -281,7 +288,12 @@ def main():
 
             elif estado == "gameover":
                 pygame.mixer.music.stop()
-                if som_perdeu:
+
+                # Bateu o recorde: toca a musica tema do recorde
+                if partida.bateu_recorde and tem_musica_recorde:
+                    pygame.mixer.music.load(caminho_recorde)
+                    pygame.mixer.music.play(-1)
+                elif som_perdeu:
                     som_perdeu.play()
 
             estado_anterior = estado

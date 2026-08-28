@@ -45,6 +45,50 @@ def _carregar_fonte(tamanho, caminho_fonte=None):
 
 
 # ============================================================
+# CAMINHO DE IMAGENS DE TELA
+# ============================================================
+
+def _caminho_tela(nome_arquivo):
+    """
+    Encontra uma imagem de tela independente da pasta.
+
+    Procura primeiro em:
+        assets/telas/<nome_arquivo>
+
+    Se nao achar, procura em:
+        assets/<nome_arquivo>
+
+    Retorna o caminho completo, ou None se nao existir.
+    """
+    pasta_projeto = os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))
+    )
+
+    # Primeira opcao: assets/telas/
+    caminho = os.path.join(
+        pasta_projeto,
+        "assets",
+        "telas",
+        nome_arquivo
+    )
+
+    if os.path.exists(caminho):
+        return caminho
+
+    # Segunda opcao: assets/
+    caminho = os.path.join(
+        pasta_projeto,
+        "assets",
+        nome_arquivo
+    )
+
+    if os.path.exists(caminho):
+        return caminho
+
+    return None
+
+
+# ============================================================
 # TEXTO
 # ============================================================
 

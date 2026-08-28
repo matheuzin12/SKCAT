@@ -8,7 +8,7 @@ Exibe a imagem de fundo e botoes Jogar/Sair.
 import os
 import pygame
 
-from scripts.interfaces import Botao
+from scripts.interfaces import Botao, _caminho_tela
 
 
 class Menu:
@@ -20,8 +20,8 @@ class Menu:
         self.altura = altura
 
         # Carrega a imagem de tela inicial como fundo
-        caminho = os.path.join("assets", "telaincial.png")
-        if os.path.exists(caminho):
+        caminho = _caminho_tela("telaincial.png")
+        if caminho:
             img = pygame.image.load(caminho).convert()
             self.imagem_fundo = pygame.transform.scale(img, (largura, altura))
         else:

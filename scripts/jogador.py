@@ -27,6 +27,10 @@ GRAVIDADE = 0.9
 # Quantos ticks esperar antes de trocar de frame
 VELOCIDADE_ANIMACAO = 6
 
+# Velocidade do gato para a FRENTE durante a queda
+# (para ele cair andando em direcao ao jogo, sem sair do mapa)
+VELOCIDADE_QUEDA_X = 2
+
 # Posicao fixa do gato no eixo X
 POSICAO_X = 150
 
@@ -132,7 +136,10 @@ class Jogador:
     Representa o gato skatista.
     """
 
-    def __init__(self, chao_y):
+    def __init__(self, chao_y, limite_x=None):
+
+        # Limite da tela no eixo X (para nao cair fora do mapa)
+        self.limite_x = limite_x
 
         # ====================================================
         # CARREGA AS ANIMACOES
@@ -148,6 +155,10 @@ class Jogador:
 
         self.animacao_caindo = (
             _carregar_animacao("caindo")
+        )
+
+        self.animacao_perdeu = (
+            _carregar_animacao("perdeu")
         )
 
 
@@ -233,10 +244,16 @@ class Jogador:
         """
 
         # ====================================================
-        # QUEDA
+        # QUEDA / PERDEU
         # ====================================================
 
-        if self.estado_animacao == "caindo":
+        if self.estado_animacao in ("caindo", "perdeu"):
+
+            # Usa a animacao do estado atual
+            if self.estado_animacao == "perdeu":
+                animacao = self.animacao_perdeu
+            else:
+                animacao = self.animacao_caindo
 
             # Aplica gravidade durante a queda
             self.velocidade_y += (
@@ -245,6 +262,34 @@ class Jogador:
 
             self.y += (
                 self.velocidade_y
+            )
+
+            # O gato cai indo um pouco para a FRENTE
+            # (na direcao que o jogo anda)
+            self.x += VELOCIDADE_QUEDA_X
+
+            # ================================================
+            # NAO DEIXA O GATO SAIR DO MAPA DA TELA
+            # ================================================
+
+            # Limita o X: nao passa da borda direita da tela
+            if self.limite_x:
+
+                self.x = max(
+                    0,
+                    min(
+                        self.x,
+                        self.limite_x - self.altura_sprite
+                    )
+                )
+
+            # Limita o Y: nao passa do chao (nao sai por baixo)
+            self.y = max(
+                0,
+                min(
+                    self.y,
+                    self.chao_y - self.altura_sprite
+                )
             )
 
             # Atualiza a animacao
@@ -261,18 +306,18 @@ class Jogador:
 
 
                 # Verifica se terminou a animacao
-                if self.animacao_caindo:
+                if animacao:
 
                     if (
                         self.frame_atual
                         >= len(
-                            self.animacao_caindo
+                            animacao
                         )
                     ):
 
                         self.frame_atual = (
                             len(
-                                self.animacao_caindo
+                                animacao
                             )
                             - 1
                         )
@@ -382,20 +427,21 @@ class Jogador:
 
     def iniciar_queda(self):
         """
-        Inicia a animacao de queda.
+        Inicia a animacao de queda/perder.
         """
 
         self.vivo = False
 
         self.estado_animacao = (
-            "caindo"
+            "perdeu"
         )
 
         self.frame_atual = 0
 
         self.contador_frames = 0
 
-        self.velocidade_y = -8
+        # Comeca caindo suave (sem voar para cima)
+        self.velocidade_y = 0
 
         self.queda_terminou = False
 
@@ -417,6 +463,15 @@ class Jogador:
 
             frames = (
                 self.animacao_caindo
+            )
+
+        elif (
+            self.estado_animacao
+            == "perdeu"
+        ):
+
+            frames = (
+                self.animacao_perdeu
             )
 
         elif (

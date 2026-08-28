@@ -22,7 +22,12 @@ import random
 from scripts.jogador import Jogador
 from scripts.obstaculo import Obstaculo
 from scripts.moeda import Moeda
-from scripts.interfaces import Texto, Botao, FONTE_FRAKTUR
+from scripts.interfaces import (
+    Texto,
+    Botao,
+    FONTE_FRAKTUR,
+    _caminho_tela,
+)
 
 
 # ============================================================
@@ -63,6 +68,18 @@ CHAO_Y = 620
 
 # Distancia inicial entre os obstaculos
 DISTANCIA_ENTRE_OBSTACULOS = 500
+
+# ====================================================
+# TRANSICAO PARA O GAME OVER
+# ====================================================
+
+# Quantos frames ficar mostrando o gato parado depois
+# que a animacao de perder termina (60 fps = 50/60s)
+FIM_ESPERA_FRAMES = 50
+
+# Quanto a tela escurece por frame apos a espera
+# (5 = 51 frames ate ficar preta, ~0.85s)
+FIM_ESCURECER_VELOCIDADE = 5
 
 # ============================================================
 
@@ -316,9 +333,9 @@ class Partida:
         # ====================================================
 
         self.jogador = Jogador(
-            CHAO_Y
+            CHAO_Y,
+            limite_x=self.largura
         )
-
 
         # ====================================================
         # OBSTACULOS
@@ -369,6 +386,19 @@ class Partida:
 
         # Indica se esta executando a animacao de queda
         self.em_queda = False
+
+        # Indica se a animacao de perder acabou e estamos
+        # na pausa antes de escurecer e mostrar o game over
+        self.em_transicao_fim = False
+
+        # Contador de frames da transicao final
+        self.fim_contador = 0
+
+        # Fase da transicao: "espera" ou "escurecer"
+        self.fim_fase = "espera"
+
+        # Escurecimento atual da tela (0 = claro, 255 = preto)
+        self.fim_dark_alpha = 0
 
         # Controla se o resultado da partida ja foi enviado
         # ao Django (evita enviar varias vezes na mesma partida)
@@ -460,17 +490,31 @@ class Partida:
 
 
         # ====================================================
+        # BOTAO DE PAUSA (durante a partida)
+        # ====================================================
+
+        self.botao_pausar = Botao(
+            "Pausar",
+            largura - 100,
+            50,
+            largura=140,
+            altura=45,
+            cor_fundo=(70, 70, 200),
+            cor_hover=(100, 100, 255),
+            opacidade=120
+        )
+
+
+        # ====================================================
         # GAME OVER
         # ====================================================
 
         # Caminho da imagem de fundo do game over
-        caminho_telaperdeu = os.path.join(
-            self.pasta_projeto,
-            "assets",
+        caminho_telaperdeu = _caminho_tela(
             "telaperdeu.png"
         )
 
-        if os.path.exists(caminho_telaperdeu):
+        if caminho_telaperdeu:
             img_pd = pygame.image.load(
                 caminho_telaperdeu
             ).convert()
@@ -480,10 +524,24 @@ class Partida:
         else:
             self.imagem_telaperdeu = None
 
+        # Caminho da imagem de recorde (telarecord.png)
+        # Mostrada SOMENTE quando o jogador bate o recorde
+        caminho_telarecord = _caminho_tela(
+            "telarecord.png"
+        )
+
+        if caminho_telarecord:
+            img_rec = pygame.image.load(
+                caminho_telarecord
+            ).convert()
+            self.imagem_telarecord = pygame.transform.scale(
+                img_rec, (largura, altura)
+            )
+        else:
+            self.imagem_telarecord = None
+
         # Caminho da imagem perdeu.png (centralizada)
-        caminho_perdeu = os.path.join(
-            self.pasta_projeto,
-            "assets",
+        caminho_perdeu = _caminho_tela(
             "perdeu.png"
         )
 
@@ -500,10 +558,8 @@ class Partida:
             self.som_moeda = None
 
 
-        # Tenta carregar a imagem
-        if os.path.exists(
-            caminho_perdeu
-        ):
+        # Tenta carregar a imagem perdeu.png
+        if caminho_perdeu:
 
             self.imagem_perdeu = pygame.image.load(
                 caminho_perdeu
@@ -763,6 +819,68 @@ class Partida:
 
 
         # ====================================================
+        # TRANSICAO PARA O GAME OVER
+        # ====================================================
+
+        # Depois que o gato cai, a gente espera um pouco,
+        # escurece a tela devagar e SO entao mostra o
+        # game over (para dar tempo de ver a animacao).
+        if self.em_transicao_fim:
+
+            self.fim_contador += 1
+
+            # Fase 1: espera (mostra o gato parado no chao)
+            if self.fim_fase == "espera":
+
+                if self.fim_contador >= FIM_ESPERA_FRAMES:
+
+                    self.fim_fase = "escurecer"
+
+                    self.fim_contador = 0
+
+            # Fase 2: escurece a tela aos poucos
+            else:
+
+                self.fim_dark_alpha = min(
+                    255,
+                    self.fim_dark_alpha
+                    + FIM_ESCURECER_VELOCIDADE
+                )
+
+                # Ficou preta: pode mostrar o game over
+                if self.fim_dark_alpha >= 255:
+
+                    self.game_over = True
+
+                    # ========================================
+                    # VERIFICAR SE BATEU O RECORDE DE MOEDAS
+                    # ========================================
+
+                    # Marca ha quanto o jogador ja tinha antes
+                    # (para mostrar na mensagem de parabens)
+                    self.recorde_anterior = (
+                        self.recorde_inicio
+                    )
+
+                    # Bateu o recorde se coletou MAIS moedas
+                    # do que a melhor marca anterior (e se
+                    # ja existia uma marca para superar)
+                    if (
+                        self.pontos > 0
+                        and self.pontos > self.recorde_inicio
+                        and self.recorde_inicio > 0
+                    ):
+
+                        self.bateu_recorde = True
+
+                    # Atualiza a marca para a proxima partida
+                    if self.pontos > self.recorde_inicio:
+                        self.recorde_inicio = self.pontos
+
+            return
+
+
+        # ====================================================
         # ANIMACAO DE QUEDA
         # ====================================================
 
@@ -773,36 +891,17 @@ class Partida:
             self.jogador.atualizar()
 
 
-            # Quando a animacao terminar
+            # Quando a animacao terminar,
+            # comeca a transicao para o game over
             if self.jogador.queda_terminou:
 
-                self.game_over = True
+                self.em_transicao_fim = True
 
-                # ============================================
-                # VERIFICAR SE BATEU O RECORDE DE MOEDAS
-                # ============================================
+                self.fim_fase = "espera"
 
-                # Marca ha quanto o jogador ja tinha antes
-                # (para mostrar na mensagem de parabens)
-                self.recorde_anterior = (
-                    self.recorde_inicio
-                )
+                self.fim_contador = 0
 
-                # Bateu o recorde se coletou MAIS moedas do
-                # que a melhor marca anterior (e se ja existia
-                # uma marca anterior para superar)
-                if (
-                    self.pontos > 0
-                    and self.pontos > self.recorde_inicio
-                    and self.recorde_inicio > 0
-                ):
-
-                    self.bateu_recorde = True
-
-                # Atualiza a marca para a proxima jogada
-                # ("Tentar novamente" compara com este novo valor)
-                if self.pontos > self.recorde_inicio:
-                    self.recorde_inicio = self.pontos
+                self.fim_dark_alpha = 0
 
 
             return
@@ -1058,6 +1157,46 @@ class Partida:
 
 
         # ====================================================
+        # BOTAO DE PAUSA
+        # (visivel somente enquanto esta jogando)
+        # ====================================================
+
+        if (
+            not self.pausado
+            and not self.em_transicao_fim
+            and not self.game_over
+        ):
+
+            self.botao_pausar.desenhar(
+                self.tela
+            )
+
+
+        # ====================================================
+        # ESCURECER (transicao para o game over)
+        # ====================================================
+
+        if (
+            self.em_transicao_fim
+            and self.fim_dark_alpha > 0
+        ):
+
+            escuro = pygame.Surface(
+                (self.largura, self.altura),
+                pygame.SRCALPHA
+            )
+
+            escuro.fill(
+                (0, 0, 0, self.fim_dark_alpha)
+            )
+
+            self.tela.blit(
+                escuro,
+                (0, 0)
+            )
+
+
+        # ====================================================
         # MENU DE PAUSA
         # ====================================================
 
@@ -1157,6 +1296,41 @@ class Partida:
 
 
     # ========================================================
+    # EVENTOS DA PARTIDA (durante o jogo)
+    # ========================================================
+
+    def tratar_eventos_partida(
+        self,
+        evento
+    ):
+        """
+        Processa eventos durante a partida.
+
+        Retorna:
+        - pausar  (clicou no botao de pausa)
+        - None
+        """
+
+        # Botao de pausa clicavel com o mouse,
+        # somente enquanto esta realmente jogando
+        if (
+            evento.type == pygame.MOUSEBUTTONDOWN
+            and evento.button == 1
+            and not self.em_transicao_fim
+            and not self.game_over
+            and not self.pausado
+        ):
+
+            if self.botao_pausar.clicou(
+                evento
+            ):
+
+                return "pausar"
+
+        return None
+
+
+    # ========================================================
     # EVENTOS DA PAUSA
     # ========================================================
 
@@ -1232,12 +1406,32 @@ class Partida:
         """
 
         # ====================================================
-        # FUNDO - telaperdeu.png ou overlay escuro
+        # FUNDO
         # ====================================================
 
-        if self.imagem_telaperdeu:
-            self.tela.blit(self.imagem_telaperdeu, (0, 0))
+        # Se o jogador bateu o recorde e existe a imagem
+        # telarecord.png, mostra ELA no lugar da tela de perdeu
+        mostrando_recorde = (
+            self.bateu_recorde
+            and self.imagem_telarecord
+        )
+
+        if mostrando_recorde:
+
+            self.tela.blit(
+                self.imagem_telarecord,
+                (0, 0)
+            )
+
+        elif self.imagem_telaperdeu:
+
+            self.tela.blit(
+                self.imagem_telaperdeu,
+                (0, 0)
+            )
+
         else:
+
             overlay = pygame.Surface(
                 (self.largura, self.altura),
                 pygame.SRCALPHA
@@ -1247,10 +1441,10 @@ class Partida:
 
 
         # ====================================================
-        # IMAGEM PERDEU
+        # IMAGEM PERDEU (somente se NAO for tela de recorde)
         # ====================================================
 
-        if self.imagem_perdeu:
+        if not mostrando_recorde and self.imagem_perdeu:
 
             rect_perdeu = (
                 self.imagem_perdeu.get_rect(
@@ -1283,10 +1477,10 @@ class Partida:
 
 
         # ====================================================
-        # PARABENS (quando bate o recorde de moedas)
+        # PARABENS (somente se NAO houver imagem de recorde)
         # ====================================================
 
-        if self.bateu_recorde:
+        if self.bateu_recorde and not self.imagem_telarecord:
 
             self.texto_recorde_parabens.atualizar_texto(
                 "PARABENS! Voce bateu seu recorde de moedas!"
@@ -1439,6 +1633,15 @@ class Partida:
         self.game_over = False
 
         self.em_queda = False
+
+        # Zera a transicao final (animacao > espera > escurecer)
+        self.em_transicao_fim = False
+
+        self.fim_contador = 0
+
+        self.fim_fase = "espera"
+
+        self.fim_dark_alpha = 0
 
         # Nova partida: permite enviar o resultado de novo
         self.resultado_enviado = False

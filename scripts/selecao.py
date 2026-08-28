@@ -16,7 +16,7 @@ import threading
 
 import pygame
 
-from scripts.interfaces import Botao, FONTE_FRAKTUR, Texto
+from scripts.interfaces import Botao, FONTE_FRAKTUR, Texto, _caminho_tela
 from scripts.api import listar_jogadores
 
 
@@ -53,18 +53,10 @@ class SelecaoJogador:
         # FUNDO
         # ====================================================
 
-        # Pasta principal do projeto (pai de scripts/)
-        pasta_projeto = os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__))
-        )
+        # Busca a tela inicial em assets/telas ou assets/
+        caminho_fundo = _caminho_tela("telaincial.png")
 
-        caminho_fundo = os.path.join(
-            pasta_projeto,
-            "assets",
-            "telaincial.png"
-        )
-
-        if os.path.exists(caminho_fundo):
+        if caminho_fundo:
             self.imagem_fundo = pygame.transform.scale(
                 pygame.image.load(caminho_fundo).convert(),
                 (largura, altura)
