@@ -89,6 +89,30 @@ def _caminho_tela(nome_arquivo):
 
 
 # ============================================================
+# ICONE
+# ============================================================
+
+def _carregar_icone(tamanho):
+    """
+    Carrega assets/icone.png redimensionado,
+    mantendo a proporcao (imagem quadrada).
+
+    Retorna uma Surface, ou None se o arquivo nao existir.
+    """
+    caminho = os.path.join(_pasta_assets, "icone.png")
+
+    if not os.path.exists(caminho):
+        return None
+
+    imagem = pygame.image.load(caminho).convert_alpha()
+
+    return pygame.transform.smoothscale(
+        imagem,
+        (tamanho, tamanho)
+    )
+
+
+# ============================================================
 # TEXTO
 # ============================================================
 

@@ -27,6 +27,7 @@ from scripts.interfaces import (
     Botao,
     FONTE_FRAKTUR,
     _caminho_tela,
+    _carregar_icone,
 )
 
 
@@ -539,6 +540,10 @@ class Partida:
             )
         else:
             self.imagem_telarecord = None
+
+        # Icone do jogo (pause e tela de recorde)
+        self.imagem_icone_pausa = _carregar_icone(140)
+        self.imagem_icone_recorde = _carregar_icone(240)
 
         # Caminho da imagem perdeu.png (centralizada)
         caminho_perdeu = _caminho_tela(
@@ -1268,6 +1273,27 @@ class Partida:
 
 
         # ====================================================
+        # ICONE ACIMA DOS BOTOES
+        # ====================================================
+
+        if self.imagem_icone_pausa:
+
+            rect_icone = (
+                self.imagem_icone_pausa.get_rect(
+                    center=(
+                        self.largura // 2,
+                        100
+                    )
+                )
+            )
+
+            self.tela.blit(
+                self.imagem_icone_pausa,
+                rect_icone
+            )
+
+
+        # ====================================================
         # BOTOES
         # ====================================================
 
@@ -1517,6 +1543,31 @@ class Partida:
         self.botao_sair_gameover.desenhar(
             self.tela
         )
+
+
+        # ====================================================
+        # ICONE EM CIMA DE TUDO
+        # (somente quando o jogador bate o recorde)
+        # ====================================================
+
+        if (
+            self.bateu_recorde
+            and self.imagem_icone_recorde
+        ):
+
+            rect_icone = (
+                self.imagem_icone_recorde.get_rect(
+                    center=(
+                        self.largura // 2,
+                        self.altura // 2 - 210
+                    )
+                )
+            )
+
+            self.tela.blit(
+                self.imagem_icone_recorde,
+                rect_icone
+            )
 
 
     # ========================================================

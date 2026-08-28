@@ -16,7 +16,13 @@ import threading
 
 import pygame
 
-from scripts.interfaces import Botao, FONTE_FRAKTUR, Texto, _caminho_tela
+from scripts.interfaces import (
+    Botao,
+    FONTE_FRAKTUR,
+    Texto,
+    _caminho_tela,
+    _carregar_icone,
+)
 from scripts.api import listar_jogadores
 
 
@@ -108,6 +114,12 @@ class SelecaoJogador:
             cor=(255, 255, 255),
             tamanho=26
         )
+
+        # ====================================================
+        # ICONE (cantos superiores)
+        # ====================================================
+
+        self.imagem_icone = _carregar_icone(100)
 
         # ====================================================
         # BOTOES
@@ -392,6 +404,27 @@ class SelecaoJogador:
         )
         overlay.fill((0, 0, 0, 130))
         self.tela.blit(overlay, (0, 0))
+
+        # ====================================================
+        # ICONES NOS CANTOS SUPERIORES
+        # ====================================================
+
+        if self.imagem_icone:
+
+            # Canto superior esquerdo
+            self.tela.blit(
+                self.imagem_icone,
+                (25, 25)
+            )
+
+            # Canto superior direito
+            self.tela.blit(
+                self.imagem_icone,
+                (
+                    self.largura - 25 - self.imagem_icone.get_width(),
+                    25
+                )
+            )
 
         # ====================================================
         # TITULO
